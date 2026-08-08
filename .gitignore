@@ -1,0 +1,17 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data and local artifacts
+node_modules/
+__pycache__/
+.pytest_cache/
+.DS_Store
+*.log
+
+# Sensitive/private planning material (keep sanitized summaries if publishing)
+planning/private/
+metrics/raw/
