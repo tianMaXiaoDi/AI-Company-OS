@@ -8,11 +8,11 @@
 
 **对项目的启发：** AI Company OS 的工具层要从第一天就记录权限、运行环境、失败处理和可复现方式；未来不能只验证“本地能跑”。
 
-## 主题二：Agent 的全方位监控
+## 主题二：Agent 的全方位监控与会话感知运行
 
-文章阐述了 Agent 系统的可观测性需求，重点解决：当前有多少任务正在执行、每个任务执行了多久、使用了哪些资源，以及任务最终是否成功等问题。
+Google Developers Blog 的文章 [Scaling real-time AI agents with session-aware load balancing](https://developers.googleblog.com/scaling-real-time-ai-agents-with-session-aware-load-balancing/) 将实时 Agent 的运行问题连接到会话感知的负载均衡：系统不仅要知道当前有多少任务正在执行、每个任务执行了多久、使用了哪些资源，还要在扩展实例时保留会话上下文与稳定路由。
 
-**对项目的启发：** Agent 的质量不能只靠最终回答判断。需要建立任务级日志和指标，至少覆盖任务状态、耗时、工具调用、资源/成本、错误、人工介入和最终结果。
+**对项目的启发：** Agent 的质量不能只靠最终回答判断。需要建立任务级日志和指标，至少覆盖任务状态、耗时、工具调用、资源/成本、错误、人工介入和最终结果；同时以 `session_id` 关联上下文、实例和路由决策。
 
 ## 主题三：开发者角色变化与人的责任
 

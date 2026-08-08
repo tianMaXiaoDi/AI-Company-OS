@@ -6,6 +6,7 @@
 | `planning/` | 计划、复盘、决策记录 | 源代码与密钥 |
 | `agents/` | 单职责 Agent 的合同和评估 | 未验证的大 Prompt 堆 |
 | `workflows/` | 跨 Agent 流程、状态和运行手册 | 个人随手实验 |
+| `observability/` | 任务、会话、追踪、资源、路由、指标与告警 | 业务 Agent Prompt 或客户原文 |
 | `knowledge/` | 已提炼、可检索、可引用的知识 | 未筛选网页收藏 |
 | `products/` | PRD、用户研究、实验、指标 | 与产品无关的学习笔记 |
 | `tools/` | 脚本、集成配置示例、环境说明 | `.env`、访问令牌 |

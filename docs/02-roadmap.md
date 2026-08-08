@@ -16,9 +16,9 @@
 
 | 月份 | 主题 | 月末必须存在的证据 |
 | --- | --- | --- |
-| M1 | 基础设施与认知 | README、架构图、Prompt/Agent/RAG/n8n Demo、4 次周复盘 |
+| M1 | 基础设施与认知 | README、架构图、Prompt/Agent/RAG/n8n Demo、运行治理目录、4 次周复盘 |
 | M2 | Java 工程助手 | Java 生成、Review、日志诊断 3 个 Agent 的样例与评估集 |
-| M3 | 工程编排 | Redis/MySQL/Dubbo 诊断能力 + 工程 Copilot 工作流 Demo |
+| M3 | 工程编排 | Redis/MySQL/Dubbo 诊断能力 + 工程 Copilot 工作流 Demo + 任务监控看板 v0 |
 | M4 | 客服 2.0 核心 | 意图识别、知识库、订单查询、人工接管的端到端原型 |
 | M5 | 客服 2.0 业务化 | 退款/风控规则、审计、评估集、试点演示 |
 | M6 | 找到问题 | 15 次问题访谈或高质量访谈触点；确定一个 ICP 和 MVP |

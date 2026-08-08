@@ -28,6 +28,7 @@ ai-company-os/
 ├── planning/             # 日、周、月计划与复盘（私有信息可不公开）
 ├── agents/               # 每个 Agent 的职责、输入输出、评估与版本记录
 ├── workflows/            # 多 Agent 工作流及其运行说明
+├── observability/        # Agent 任务、会话、资源与运行治理
 ├── knowledge/            # 经提炼的知识，不存原始杂物
 ├── products/             # 可上线产品的需求、实验、指标
 ├── tools/                # 脚本、集成、环境说明
@@ -53,5 +54,9 @@ ai-company-os/
 4. **真实问题优先。** 每月至少一次与真实用户、真实工作或真实业务流程接触。
 5. **每周可交付。** 不把「研究」当作完成；研究必须转化为决策、原型或文档。
 6. **隐私与权限最小化。** 不在仓库提交密钥、客户数据、身份证明或私密对话。
+
+## Agent 运行治理
+
+`observability/` 是所有 Agent 和 Workflow 的运行监控目录，负责回答：当前有多少任务在执行、每个任务耗时多久、调用了哪些工具、占用了哪些资源、是否需要人工介入，以及同一会话如何稳定地路由到合适的运行实例。它不是某个单独 Agent 的附属功能，而是 AI Company OS 的横向基础设施。
 
 详见 [运行手册](docs/09-operating-system.md)、[任务管理](docs/10-task-management.md) 和 [迭代规范](docs/11-iteration-standard.md)。
