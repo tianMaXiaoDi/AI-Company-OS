@@ -11,6 +11,10 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 *.log
+target/
+out/
+.idea/
+.vscode/
 
 # Sensitive/private planning material (keep sanitized summaries if publishing)
 planning/private/

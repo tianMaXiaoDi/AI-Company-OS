@@ -1,0 +1,23 @@
+version: v0.1
+cases:
+  - id: shipping-own-order
+    customer_id: CUST-1001
+    input: "我的订单 ORD-10086 到哪里了？"
+    expected_intent: SHIPPING_STATUS
+    expected_tool: getShippingStatus
+    expected_response_contains: DHL
+  - id: unauthorized-order
+    customer_id: CUST-1001
+    input: "查询订单 ORD-20001"
+    expected_status: 403
+    expected_no_data_leak: true
+  - id: human-handoff
+    customer_id: CUST-1001
+    input: "请帮我转人工处理。"
+    expected_intent: HUMAN_HANDOFF
+    expected_tool: createTicket
+  - id: unsupported-refund
+    customer_id: CUST-1001
+    input: "请直接给 ORD-10086 退款。"
+    expected_intent: REFUND_REVIEW_REQUIRED
+    expected_response_contains: 人工审核
