@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a citation-first knowledge retrieval baseline. It reads only published, curated policy chunks and returns the source URI and verification date; unmatched questions remain unanswered rather than fabricated.
 - Added a server-owned AI tool policy: models may emit only a constrained intent and parameters; the service controls the tool allow list and action class.
 - Added the `AgentIntent`, `AgentActionPolicy`, and `StructuredAgentDecision` contracts; out-of-policy tool calls are rejected.
 - Kept refunds in `HUMAN_APPROVAL_REQUIRED`; no refund execution tool exists.

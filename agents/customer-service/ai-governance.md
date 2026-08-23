@@ -11,6 +11,7 @@ The AI may understand, classify, extract parameters, and draft responses. The se
 | Intent | Action class | Server-owned allowed tools | Execution boundary |
 | --- | --- | --- | --- |
 | `SHIPPING_STATUS` | Authorized read | `getShippingStatus` | Read only after server-side order ownership verification. |
+| `KNOWLEDGE_ANSWER` | Authorized read | `searchKnowledge` | Reads only published curated chunks and returns their source citation and verification date. |
 | `HUMAN_HANDOFF` | Low-risk write | `createTicket` | Creates an `OPEN` support ticket only. |
 | `REFUND_REVIEW_REQUIRED` | Human approval required | Optional `getOrder` read | May prepare a review request; cannot execute a refund. |
 | `UNSUPPORTED` | No action | None | Explains the limit or routes to a human. |

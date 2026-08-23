@@ -21,3 +21,15 @@ cases:
     input: "请直接给 ORD-10086 退款。"
     expected_intent: REFUND_REVIEW_REQUIRED
     expected_response_contains: 人工审核
+  - id: cited-order-cancellation-policy
+    customer_id: CUST-1001
+    input: "订单取消政策是什么？"
+    expected_intent: KNOWLEDGE_ANSWER
+    expected_tool: searchKnowledge
+    expected_response_contains: 人工处理
+    expected_citation_source: customer-service-policy-v1
+  - id: unknown-policy-has-no-fabricated-answer
+    customer_id: CUST-1001
+    input: "会员等级如何计算？"
+    expected_intent: UNSUPPORTED
+    expected_error_code: KNOWLEDGE_SOURCE_NOT_FOUND

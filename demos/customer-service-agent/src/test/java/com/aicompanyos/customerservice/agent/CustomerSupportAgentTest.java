@@ -1,9 +1,13 @@
 package com.aicompanyos.customerservice.agent;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import com.aicompanyos.customerservice.audit.AuditService;
+import com.aicompanyos.customerservice.knowledge.KnowledgeAnswer;
+import com.aicompanyos.customerservice.knowledge.KnowledgeCitation;
+import com.aicompanyos.customerservice.knowledge.KnowledgeRetriever;
 import com.aicompanyos.customerservice.order.OrderNotAvailableException;
 import com.aicompanyos.customerservice.tool.CustomerSupportTools;
 import com.aicompanyos.customerservice.tool.OrderSnapshot;
@@ -24,12 +28,13 @@ class CustomerSupportAgentTest {
     @Mock private CustomerSupportTools tools;
     @Mock private RedisConversationMemory memory;
     @Mock private AuditService audit;
+    @Mock private KnowledgeRetriever knowledge;
 
     private CustomerSupportAgent agent;
 
     @BeforeEach
     void setUp() {
-        agent = new CustomerSupportAgent(tools, memory, audit, new AgentActionPolicy(), new DeterministicAgentDecisionEngine());
+        agent = new CustomerSupportAgent(tools, memory, audit, new AgentActionPolicy(), new DeterministicAgentDecisionEngine(), knowledge);
     }
 
     @Test
@@ -80,5 +85,36 @@ class CustomerSupportAgentTest {
         assertThat(result.reply().intent()).isEqualTo("REFUND_REVIEW_REQUIRED");
         assertThat(result.reply().response()).contains("人工审核");
         verify(tools).getOrder("CUST-1001", "ORD-10086");
+    }
+
+    @Test
+    void returnsOnlyCitedKnowledgeForPolicyQuestion() {
+        String question = "可以取消订单吗？政策是什么？";
+        when(knowledge.retrieve(question)).thenReturn(Optional.of(new KnowledgeAnswer(
+                "订单取消需要人工处理。",
+                List.of(new KnowledgeCitation("customer-service-policy-v1", "客户服务政策 v1",
+                        "repository://knowledge/customer-service/policies-v1.md#refunds-and-order-changes",
+                        LocalDate.of(2026, 8, 23))))));
+
+        AgentResult result = agent.respond("CUST-1001", "session-1", question);
+
+        assertThat(result.reply().intent()).isEqualTo("KNOWLEDGE_ANSWER");
+        assertThat(result.reply().toolsCalled()).containsExactly("searchKnowledge");
+        assertThat(result.reply().citations()).singleElement()
+                .extracting(KnowledgeCitation::sourceKey).isEqualTo("customer-service-policy-v1");
+        verify(knowledge).retrieve(question);
+    }
+
+    @Test
+    void refusesUnknownKnowledgeWithoutFabricatingAnAnswer() {
+        String question = "会员等级如何计算？";
+        when(knowledge.retrieve(question)).thenReturn(Optional.empty());
+
+        AgentResult result = agent.respond("CUST-1001", "session-1", question);
+
+        assertThat(result.reply().intent()).isEqualTo("UNSUPPORTED");
+        assertThat(result.reply().errorCode()).isEqualTo("KNOWLEDGE_SOURCE_NOT_FOUND");
+        assertThat(result.reply().citations()).isEmpty();
+        verify(knowledge).retrieve(question);
     }
 }

@@ -26,7 +26,9 @@ public class DeterministicAgentDecisionEngine implements AgentDecisionEngine {
         if (orderId.isPresent() && containsAny(normalized, "物流", "到哪", "到哪里", "配送", "运送", "shipping", "deliver", "track")) {
             return new StructuredAgentDecision(AgentIntent.SHIPPING_STATUS, orderId.get(), null);
         }
-        return new StructuredAgentDecision(AgentIntent.UNSUPPORTED, null, null);
+        // Any remaining question may be answered only if the read-only retriever can find a verified source.
+        // The agent converts a retrieval miss back to UNSUPPORTED and never invents a policy answer.
+        return new StructuredAgentDecision(AgentIntent.KNOWLEDGE_ANSWER, null, null);
     }
 
     private static Optional<String> orderIdFrom(String message) {

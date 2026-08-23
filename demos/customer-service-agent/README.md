@@ -8,7 +8,7 @@
 | --- | --- |
 | 应用 | Java 21、Spring Boot 3.5.16、Spring MVC、Virtual Threads |
 | 业务与数据 | Spring Data JPA、PostgreSQL 16、Flyway |
-| 知识层准备 | pgvector 扩展已启用；RAG schema 将在确定 Embedding 模型维度后迁移 |
+| 知识层 | PostgreSQL 中的受控知识文档和可引用文本块；当前使用无模型的词项检索基线，pgvector 已启用并会在确定 Embedding 模型维度后追加 |
 | 会话 | Redis 7，保存最小的会话订单引用，TTL 为 8 小时 |
 | 运行治理 | Spring Boot Actuator、Prometheus endpoint、持久化 append-only 审计事件 |
 | 部署 | Docker Compose、多阶段 Docker build、非 root 运行用户 |
@@ -30,7 +30,7 @@ OrderService / TicketService / AuditService
 PostgreSQL + pgvector          Redis
 ```
 
-Agent 当前用可测试的确定性路由验证流程。未来 LLM 只能输出受限意图或调用 `CustomerSupportTools`，不能直连 Repository、越过订单授权，或执行退款。
+Agent 当前用可测试的确定性路由验证流程。政策问题只从已发布知识块中返回原始受控文本、来源和验证日期；没有来源时明确拒答。未来 LLM 只能输出受限意图或调用 `CustomerSupportTools`，不能直连 Repository、越过订单授权，或执行退款。
 
 ## 本地启动
 
@@ -65,6 +65,9 @@ Invoke-RestMethod http://localhost:8080/api/chat -Method Post -ContentType 'appl
 
 # 会话记忆 + 退款人工审核边界
 Invoke-RestMethod http://localhost:8080/api/chat -Method Post -ContentType 'application/json' -Headers @{ 'X-Customer-Id' = 'CUST-1001' } -Body '{"sessionId":"demo-1","message":"那可以退款吗？"}'
+
+# 带来源的政策回答（不调用外部模型）
+Invoke-RestMethod http://localhost:8080/api/chat -Method Post -ContentType 'application/json' -Headers @{ 'X-Customer-Id' = 'CUST-1001' } -Body '{"sessionId":"demo-1","message":"订单取消政策是什么？"}'
 ```
 
 `X-Customer-Id` 是开发环境身份模拟，不是真实认证。生产部署前必须用 JWT/OIDC claim 适配器替换，且必须在网关/服务端验证 token；客户端不得直接声明 customer ID。
@@ -81,7 +84,6 @@ mvn test
 
 ## 下一迭代
 
-1. 引入经过验证的 JWT/OIDC 身份适配器与角色权限。
-2. 准备政策文档、确定 Embedding 模型，再迁移知识块和 `vector(n)` schema。
-3. 将 LLM 的结构化意图输出接入 `CustomerSupportTools`，并建立离线评估集。
-4. 增加退款建议与 `PENDING_APPROVAL → APPROVED/REJECTED → EXECUTED` 人工审批状态机。
+1. 选择并评估 Embedding 模型，再将现有可引用知识块追加到 `vector(n)` 语义检索索引。
+2. 将 LLM 的结构化意图输出接入 `CustomerSupportTools`，并建立离线评估集。
+3. 增加退款建议与 `PENDING_APPROVAL → APPROVED/REJECTED → EXECUTED` 人工审批状态机。

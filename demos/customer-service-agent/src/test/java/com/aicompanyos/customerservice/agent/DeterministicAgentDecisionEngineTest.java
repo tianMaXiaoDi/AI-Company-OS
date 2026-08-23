@@ -23,4 +23,12 @@ class DeterministicAgentDecisionEngineTest {
         assertThat(decision.intent()).isEqualTo(AgentIntent.REFUND_REVIEW_REQUIRED);
         assertThat(decision.orderId()).isEqualTo("ORD-10086");
     }
+
+    @Test
+    void policyQuestionUsesTheConstrainedKnowledgeIntent() {
+        StructuredAgentDecision decision = engine.decide("订单取消政策是什么？");
+
+        assertThat(decision.intent()).isEqualTo(AgentIntent.KNOWLEDGE_ANSWER);
+        assertThat(decision.orderId()).isNull();
+    }
 }

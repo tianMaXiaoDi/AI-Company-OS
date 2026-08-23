@@ -22,4 +22,4 @@
 
 ## 下一阶段验收
 
-已接入 Spring Boot + PostgreSQL，并保留 API 语义和授权测试。下一阶段将企业政策知识库接入受控的 RAG 检索，回答必须附带来源。
+已接入 Spring Boot + PostgreSQL，并保留 API 语义和授权测试。企业政策知识库现以只读、可引用的检索基线接入；下一阶段是在选定 Embedding 模型后增加语义向量检索。

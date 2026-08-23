@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.aicompanyos.customerservice.audit.AuditService;
+import com.aicompanyos.customerservice.knowledge.KnowledgeAnswer;
+import com.aicompanyos.customerservice.knowledge.KnowledgeRetriever;
 import com.aicompanyos.customerservice.order.OrderNotAvailableException;
 import com.aicompanyos.customerservice.order.OrderNotFoundException;
 import com.aicompanyos.customerservice.tool.CustomerSupportTools;
@@ -24,14 +26,17 @@ public class CustomerSupportAgent {
     private final AuditService audit;
     private final AgentActionPolicy actionPolicy;
     private final AgentDecisionEngine decisionEngine;
+    private final KnowledgeRetriever knowledgeRetriever;
 
     public CustomerSupportAgent(CustomerSupportTools tools, RedisConversationMemory memory, AuditService audit,
-                                AgentActionPolicy actionPolicy, AgentDecisionEngine decisionEngine) {
+                                AgentActionPolicy actionPolicy, AgentDecisionEngine decisionEngine,
+                                KnowledgeRetriever knowledgeRetriever) {
         this.tools = tools;
         this.memory = memory;
         this.audit = audit;
         this.actionPolicy = actionPolicy;
         this.decisionEngine = decisionEngine;
+        this.knowledgeRetriever = knowledgeRetriever;
     }
 
     public AgentResult respond(String customerId, String sessionId, String message) {
@@ -73,9 +78,22 @@ public class CustomerSupportAgent {
             }
         }
 
+        if (decision.intent() == AgentIntent.KNOWLEDGE_ANSWER) {
+            Optional<KnowledgeAnswer> answer = knowledgeRetriever.retrieve(message);
+            if (answer.isPresent()) {
+                audit.record(traceId, sessionId, customerId, "knowledge.answer", "searchKnowledge", "SUCCEEDED");
+                KnowledgeAnswer result = answer.get();
+                return AgentResult.ok(reply(traceId, AgentIntent.KNOWLEDGE_ANSWER, List.of("searchKnowledge"),
+                        result.response(), null, null, result.citations()));
+            }
+            audit.record(traceId, sessionId, customerId, "knowledge.answer", "searchKnowledge", "NO_VERIFIED_SOURCE");
+            return AgentResult.ok(reply(traceId, AgentIntent.UNSUPPORTED, List.of(),
+                    "暂未找到可核验的政策来源。请转人工客服确认。", null, "KNOWLEDGE_SOURCE_NOT_FOUND", List.of()));
+        }
+
         audit.record(traceId, sessionId, customerId, "chat.unsupported", "none", "REQUIRES_KNOWLEDGE_OR_HUMAN");
         return AgentResult.ok(reply(traceId, AgentIntent.UNSUPPORTED, List.of(),
-                "当前版本可查询订单物流或转人工。政策类问题将在企业知识库接入后提供带来源的回答。", null, null));
+                "当前版本可查询订单物流或转人工。政策类问题将在企业知识库接入后提供带来源的回答。", null, null, List.of()));
     }
 
     private AgentResult denied(String traceId, String sessionId, String customerId, AgentIntent intent, String workflow, String tool) {
@@ -90,12 +108,18 @@ public class CustomerSupportAgent {
 
     private AgentReply reply(String traceId, AgentIntent intent, List<String> toolsCalled, String message, String ticketId, String errorCode) {
         actionPolicy.assertToolsAllowed(intent, toolsCalled);
-        return new AgentReply(traceId, intent.name(), toolsCalled, message, ticketId, errorCode);
+        return new AgentReply(traceId, intent.name(), toolsCalled, message, ticketId, errorCode, List.of());
     }
 
     private AgentReply errorReply(String traceId, AgentIntent intent, List<String> toolsCalled, String message, String errorCode) {
         actionPolicy.assertToolsAllowed(intent, toolsCalled);
-        return new AgentReply(traceId, "ERROR", toolsCalled, message, null, errorCode);
+        return new AgentReply(traceId, "ERROR", toolsCalled, message, null, errorCode, List.of());
+    }
+
+    private AgentReply reply(String traceId, AgentIntent intent, List<String> toolsCalled, String message,
+                             String ticketId, String errorCode, List<com.aicompanyos.customerservice.knowledge.KnowledgeCitation> citations) {
+        actionPolicy.assertToolsAllowed(intent, toolsCalled);
+        return new AgentReply(traceId, intent.name(), toolsCalled, message, ticketId, errorCode, List.copyOf(citations));
     }
 
 }
