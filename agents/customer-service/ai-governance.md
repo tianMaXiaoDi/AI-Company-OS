@@ -23,6 +23,7 @@ The AI may understand, classify, extract parameters, and draft responses. The se
 - Access to another customer's data or bypassing the server-side ownership check.
 - Trusting a customer-supplied identity, role, authorization claim, or business fact.
 - Answering policy, price, delivery, or commitment questions without a verifiable retrieval source.
+- Sending customer messages, orders, or policy documents to a remote embedding provider. The opt-in semantic profile accepts loopback endpoints only until a separate provider and data-processing ADR is approved.
 
 ## Future LLM decision contract
 

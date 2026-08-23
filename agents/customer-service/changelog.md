@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added an opt-in local semantic retrieval profile backed by `pgvector` and a 1024-dimension BAAI/bge-m3-compatible embedding endpoint. It is disabled by default, rejects remote endpoints, and falls back to citation-first lexical retrieval when unavailable.
 - Added a citation-first knowledge retrieval baseline. It reads only published, curated policy chunks and returns the source URI and verification date; unmatched questions remain unanswered rather than fabricated.
 - Added a server-owned AI tool policy: models may emit only a constrained intent and parameters; the service controls the tool allow list and action class.
 - Added the `AgentIntent`, `AgentActionPolicy`, and `StructuredAgentDecision` contracts; out-of-policy tool calls are rejected.

@@ -44,6 +44,10 @@ public class KnowledgeChunk {
         return document;
     }
 
+    public UUID id() {
+        return id;
+    }
+
     public String citationAnchor() {
         return citationAnchor;
     }

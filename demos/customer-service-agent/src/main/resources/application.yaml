@@ -41,3 +41,15 @@ info:
   app:
     name: AI Company OS Customer Service Agent
     version: 0.2.0-SNAPSHOT
+
+customer-service:
+  knowledge:
+    semantic:
+      # Used only when the explicit `semantic` Spring profile is active.
+      # The application rejects non-loopback endpoints until a remote-provider ADR is approved.
+      base-url: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL:http://localhost:8088}
+      api-key: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_API_KEY:}
+      model: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_MODEL:BAAI/bge-m3}
+      dimension: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_DIMENSION:1024}
+      maximum-distance: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_MAXIMUM_DISTANCE:0.45}
+      index-on-startup: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP:false}

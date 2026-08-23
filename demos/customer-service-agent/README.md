@@ -8,7 +8,7 @@
 | --- | --- |
 | 应用 | Java 21、Spring Boot 3.5.16、Spring MVC、Virtual Threads |
 | 业务与数据 | Spring Data JPA、PostgreSQL 16、Flyway |
-| 知识层 | PostgreSQL 中的受控知识文档和可引用文本块；当前使用无模型的词项检索基线，pgvector 已启用并会在确定 Embedding 模型维度后追加 |
+| 知识层 | PostgreSQL 中的受控知识文档、可引用文本块和 pgvector HNSW 索引；默认使用无模型的词项检索，可选本地 BAAI/bge-m3 语义检索 |
 | 会话 | Redis 7，保存最小的会话订单引用，TTL 为 8 小时 |
 | 运行治理 | Spring Boot Actuator、Prometheus endpoint、持久化 append-only 审计事件 |
 | 部署 | Docker Compose、多阶段 Docker build、非 root 运行用户 |
@@ -31,6 +31,17 @@ PostgreSQL + pgvector          Redis
 ```
 
 Agent 当前用可测试的确定性路由验证流程。政策问题只从已发布知识块中返回原始受控文本、来源和验证日期；没有来源时明确拒答。未来 LLM 只能输出受限意图或调用 `CustomerSupportTools`，不能直连 Repository、越过订单授权，或执行退款。
+
+### 可选本地语义检索
+
+默认 `dev` profile 不调用任何 Embedding 服务。若本机已部署兼容 OpenAI `/v1/embeddings` 协议的 `BAAI/bge-m3` 服务，可显式启用 `dev,semantic` profile，并设定 `CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP=true` 为已发布政策块创建 1024 维向量索引。该实现只接受 `localhost`、`127.0.0.1` 或 `::1` 端点；远端提供商尚未获批。
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'dev,semantic'
+$env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL = 'http://localhost:8088'
+$env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP = 'true'
+mvn spring-boot:run
+```
 
 ## 本地启动
 
@@ -84,6 +95,6 @@ mvn test
 
 ## 下一迭代
 
-1. 选择并评估 Embedding 模型，再将现有可引用知识块追加到 `vector(n)` 语义检索索引。
+1. 用离线评估集验证词项和本地语义检索的召回、引用正确性与拒答率，再决定是否扩大政策语料。
 2. 将 LLM 的结构化意图输出接入 `CustomerSupportTools`，并建立离线评估集。
 3. 增加退款建议与 `PENDING_APPROVAL → APPROVED/REJECTED → EXECUTED` 人工审批状态机。
