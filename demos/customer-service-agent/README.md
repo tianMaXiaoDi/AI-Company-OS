@@ -38,10 +38,30 @@ Agent 当前用可测试的确定性路由验证流程。政策问题只从已�
 
 ```powershell
 $env:SPRING_PROFILES_ACTIVE = 'dev,semantic'
-$env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL = 'http://localhost:8088'
+$env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL = 'http://localhost:11434'
 $env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP = 'true'
 mvn spring-boot:run
 ```
+
+### Local Ollama grounded RAG
+
+The supported local setup uses Ollama's `bge-m3` embedding model and `qwen3:4b` chat model. Pull both once, then activate all three local profiles. The first startup creates embeddings for published knowledge chunks; later startups should omit `CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP` unless re-indexing is intended.
+
+```powershell
+ollama pull bge-m3
+ollama pull qwen3:4b
+$env:SPRING_PROFILES_ACTIVE = 'dev,semantic,llm'
+$env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP = 'true'
+mvn spring-boot:run
+```
+
+The local LLM has two isolated, non-executable roles. First it may classify a question into the existing structured intent contract; it cannot name a tool or access any customer data. The server validates the JSON shape, intent, and order ID against the original message, records the decision source, and falls back to deterministic routing when invalid or unavailable. Then, only after server-side retrieval or an authorized read tool has completed, it may draft a cited knowledge answer or a refund-status explanation from the minimized server facts. Business tools, customer identity, authorization, database access, and refund execution remain outside the LLM boundary.
+
+### Refund Status Tool Calling
+
+For refund-status questions, the LLM (or the deterministic fallback) may select the `REFUND_STATUS_EXPLANATION` intent only; the server, not the model, decides whether the authorized Java tool can run. If no order ID is present, the agent asks the customer to provide one. With an order ID, the flow is `question → validated intent → Java tool → customer-safe answer`. The answer is grounded only in tool results, so the model cannot invent a refund status, amount, or expected arrival time.
+
+`RefundStatusTool` is a standalone in-memory demo tool with three deterministic outcomes: a refund in progress, a completed refund, and an explicit order-not-found response. Its input is `orderId`; its output is `orderFound`, `refundStatus`, `refundAmount`, and `expectedArrivalAt`. The active agent uses the same guarded pattern through `CustomerSupportTools`, where customer ownership is verified before business data is returned. See [the detailed flow](docs/refund-status-tool-calling.md).
 
 ## 本地启动
 

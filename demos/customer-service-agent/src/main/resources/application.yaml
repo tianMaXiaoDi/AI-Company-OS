@@ -26,6 +26,10 @@ spring:
 
 server:
   shutdown: graceful
+  servlet:
+    encoding:
+      charset: UTF-8
+      force-response: true
 
 management:
   endpoints:
@@ -47,9 +51,16 @@ customer-service:
     semantic:
       # Used only when the explicit `semantic` Spring profile is active.
       # The application rejects non-loopback endpoints until a remote-provider ADR is approved.
-      base-url: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL:http://localhost:8088}
+      base-url: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_BASE_URL:http://localhost:11434}
       api-key: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_API_KEY:}
-      model: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_MODEL:BAAI/bge-m3}
+      model: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_MODEL:bge-m3}
       dimension: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_DIMENSION:1024}
       maximum-distance: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_MAXIMUM_DISTANCE:0.45}
       index-on-startup: ${CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP:false}
+    llm:
+      # Used only when the explicit `llm` Spring profile is active.
+      # Like embeddings, the application rejects non-loopback endpoints.
+      base-url: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_BASE_URL:http://localhost:11434}
+      model: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_MODEL:qwen3:4b}
+      maximum-tokens: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_MAXIMUM_TOKENS:400}
+      temperature: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_TEMPERATURE:0}

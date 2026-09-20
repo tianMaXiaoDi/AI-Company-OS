@@ -6,11 +6,16 @@ import java.util.UUID;
 
 import com.aicompanyos.customerservice.audit.AuditService;
 import com.aicompanyos.customerservice.knowledge.KnowledgeAnswer;
+import com.aicompanyos.customerservice.knowledge.GroundedKnowledgeAnswerGenerator;
 import com.aicompanyos.customerservice.knowledge.KnowledgeRetriever;
 import com.aicompanyos.customerservice.order.OrderNotAvailableException;
 import com.aicompanyos.customerservice.order.OrderNotFoundException;
+import com.aicompanyos.customerservice.refund.RefundNotFoundException;
+import com.aicompanyos.customerservice.refund.RefundStatusExplanation;
+import com.aicompanyos.customerservice.refund.RefundStatusExplanationGenerator;
 import com.aicompanyos.customerservice.tool.CustomerSupportTools;
 import com.aicompanyos.customerservice.tool.OrderSnapshot;
+import com.aicompanyos.customerservice.tool.RefundStatusSnapshot;
 import com.aicompanyos.customerservice.tool.TicketSnapshot;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,21 +32,57 @@ public class CustomerSupportAgent {
     private final AgentActionPolicy actionPolicy;
     private final AgentDecisionEngine decisionEngine;
     private final KnowledgeRetriever knowledgeRetriever;
+    private final GroundedKnowledgeAnswerGenerator answerGenerator;
+    private final RefundStatusExplanationGenerator refundExplanationGenerator;
 
     public CustomerSupportAgent(CustomerSupportTools tools, RedisConversationMemory memory, AuditService audit,
                                 AgentActionPolicy actionPolicy, AgentDecisionEngine decisionEngine,
-                                KnowledgeRetriever knowledgeRetriever) {
+                                KnowledgeRetriever knowledgeRetriever, GroundedKnowledgeAnswerGenerator answerGenerator,
+                                RefundStatusExplanationGenerator refundExplanationGenerator) {
         this.tools = tools;
         this.memory = memory;
         this.audit = audit;
         this.actionPolicy = actionPolicy;
         this.decisionEngine = decisionEngine;
         this.knowledgeRetriever = knowledgeRetriever;
+        this.answerGenerator = answerGenerator;
+        this.refundExplanationGenerator = refundExplanationGenerator;
     }
 
     public AgentResult respond(String customerId, String sessionId, String message) {
         String traceId = UUID.randomUUID().toString();
-        StructuredAgentDecision decision = decisionEngine.decide(message);
+        AgentDecisionResult decisionResult = decisionEngine.decide(message);
+        StructuredAgentDecision decision = decisionResult.decision();
+        audit.record(traceId, sessionId, customerId, "agent.decision", "classifyIntent", decisionResult.source().name());
+
+        if (decision.intent() == AgentIntent.REFUND_STATUS_EXPLANATION) {
+            Optional<String> orderId = Optional.ofNullable(decision.orderId()).or(() -> memory.lastOrder(customerId, sessionId));
+            if (orderId.isEmpty()) {
+                audit.record(traceId, sessionId, customerId, "refund.status.explanation", "none", "REFERENCE_REQUIRED");
+                return AgentResult.ok(reply(traceId, AgentIntent.REFUND_STATUS_EXPLANATION, List.of(),
+                        "请提供订单号，或先查询对应订单后再询问退款状态。", null, "REFUND_REFERENCE_REQUIRED"));
+            }
+            try {
+                RefundStatusSnapshot refund = tools.getRefundStatus(customerId, orderId.get());
+                memory.rememberOrder(customerId, sessionId, orderId.get());
+                Optional<RefundStatusExplanation> explanation = refundExplanationGenerator.generate(message, refund);
+                String outcome = explanation.isPresent() ? "LLM_GROUNDED" : "DETERMINISTIC_FALLBACK";
+                String response = explanation.map(RefundStatusExplanation::response).orElseGet(() -> refundStatusReply(refund));
+                audit.record(traceId, sessionId, customerId, "refund.status.explanation", "getRefundStatus", outcome);
+                return AgentResult.ok(reply(traceId, AgentIntent.REFUND_STATUS_EXPLANATION, List.of("getRefundStatus"),
+                        response, null, null));
+            } catch (OrderNotAvailableException exception) {
+                return denied(traceId, sessionId, customerId, AgentIntent.REFUND_STATUS_EXPLANATION,
+                        "refund.status.explanation", "getRefundStatus");
+            } catch (OrderNotFoundException exception) {
+                return missing(traceId, sessionId, customerId, AgentIntent.REFUND_STATUS_EXPLANATION,
+                        "refund.status.explanation", "getRefundStatus");
+            } catch (RefundNotFoundException exception) {
+                audit.record(traceId, sessionId, customerId, "refund.status.explanation", "getRefundStatus", "NOT_FOUND");
+                return AgentResult.error(HttpStatus.NOT_FOUND, errorReply(traceId, AgentIntent.REFUND_STATUS_EXPLANATION,
+                        List.of("getRefundStatus"), "未找到该订单对应的退款申请。", "REFUND_NOT_FOUND"));
+            }
+        }
 
         if (decision.intent() == AgentIntent.REFUND_REVIEW_REQUIRED) {
             Optional<String> orderId = Optional.ofNullable(decision.orderId()).or(() -> memory.lastOrder(customerId, sessionId));
@@ -82,7 +123,7 @@ public class CustomerSupportAgent {
             Optional<KnowledgeAnswer> answer = knowledgeRetriever.retrieve(message);
             if (answer.isPresent()) {
                 audit.record(traceId, sessionId, customerId, "knowledge.answer", "searchKnowledge", "SUCCEEDED");
-                KnowledgeAnswer result = answer.get();
+                KnowledgeAnswer result = answerGenerator.generate(message, answer.get()).orElse(answer.get());
                 return AgentResult.ok(reply(traceId, AgentIntent.KNOWLEDGE_ANSWER, List.of("searchKnowledge"),
                         result.response(), null, null, result.citations()));
             }
@@ -120,6 +161,12 @@ public class CustomerSupportAgent {
                              String ticketId, String errorCode, List<com.aicompanyos.customerservice.knowledge.KnowledgeCitation> citations) {
         actionPolicy.assertToolsAllowed(intent, toolsCalled);
         return new AgentReply(traceId, intent.name(), toolsCalled, message, ticketId, errorCode, List.copyOf(citations));
+    }
+
+    private static String refundStatusReply(RefundStatusSnapshot refund) {
+        return "退款单 %s 当前处于%s。原因：%s。最近更新时间：%s。下一步：%s。".formatted(
+                refund.refundId(), refund.status().customerLabel(), refund.reasonDescription(),
+                refund.updatedAt(), refund.nextAction());
     }
 
 }

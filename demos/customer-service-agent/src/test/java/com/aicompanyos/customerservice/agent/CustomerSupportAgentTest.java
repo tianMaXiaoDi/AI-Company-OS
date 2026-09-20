@@ -7,11 +7,16 @@ import java.util.Optional;
 import com.aicompanyos.customerservice.audit.AuditService;
 import com.aicompanyos.customerservice.knowledge.KnowledgeAnswer;
 import com.aicompanyos.customerservice.knowledge.KnowledgeCitation;
+import com.aicompanyos.customerservice.knowledge.GroundedKnowledgeAnswerGenerator;
 import com.aicompanyos.customerservice.knowledge.KnowledgeRetriever;
 import com.aicompanyos.customerservice.order.OrderNotAvailableException;
+import com.aicompanyos.customerservice.refund.RefundStatusExplanation;
+import com.aicompanyos.customerservice.refund.RefundStatusExplanationGenerator;
 import com.aicompanyos.customerservice.tool.CustomerSupportTools;
 import com.aicompanyos.customerservice.tool.OrderSnapshot;
+import com.aicompanyos.customerservice.tool.RefundStatusSnapshot;
 import com.aicompanyos.customerservice.tool.TicketSnapshot;
+import com.aicompanyos.customerservice.refund.RefundStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +24,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,12 +37,15 @@ class CustomerSupportAgentTest {
     @Mock private RedisConversationMemory memory;
     @Mock private AuditService audit;
     @Mock private KnowledgeRetriever knowledge;
+    @Mock private GroundedKnowledgeAnswerGenerator answerGenerator;
+    @Mock private RefundStatusExplanationGenerator refundExplanationGenerator;
 
     private CustomerSupportAgent agent;
 
     @BeforeEach
     void setUp() {
-        agent = new CustomerSupportAgent(tools, memory, audit, new AgentActionPolicy(), new DeterministicAgentDecisionEngine(), knowledge);
+        agent = new CustomerSupportAgent(tools, memory, audit, new AgentActionPolicy(), new DeterministicAgentDecisionEngine(), knowledge,
+                answerGenerator, refundExplanationGenerator);
     }
 
     @Test
@@ -49,7 +60,10 @@ class CustomerSupportAgentTest {
         assertThat(result.reply().toolsCalled()).isEqualTo(List.of("getShippingStatus"));
         assertThat(result.reply().response()).contains("DHL");
         verify(memory).rememberOrder("CUST-1001", "session-1", "ORD-10086");
-        verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(audit).record(anyString(), eq("session-1"), eq("CUST-1001"), eq("agent.decision"),
+                eq("classifyIntent"), eq("DETERMINISTIC"));
+        verify(audit).record(anyString(), eq("session-1"), eq("CUST-1001"), eq("shipping.status"),
+                eq("getShippingStatus"), eq("SUCCEEDED"));
     }
 
     @Test
@@ -85,6 +99,58 @@ class CustomerSupportAgentTest {
         assertThat(result.reply().intent()).isEqualTo("REFUND_REVIEW_REQUIRED");
         assertThat(result.reply().response()).contains("人工审核");
         verify(tools).getOrder("CUST-1001", "ORD-10086");
+    }
+
+    @Test
+    void explainsAStuckRefundUsingOnlyTheCustomerScopedReadTool() {
+        when(tools.getRefundStatus("CUST-1001", "ORD-10086"))
+                .thenReturn(new RefundStatusSnapshot("RF-10001", "ORD-10086", RefundStatus.PENDING_MANUAL_REVIEW,
+                        "PAYMENT_RISK_REVIEW", "Payment channel requires manual risk review.",
+                        "WAIT_FOR_OPERATIONS_REVIEW", java.time.Instant.parse("2026-08-24T12:30:00Z")));
+
+        AgentResult result = agent.respond("CUST-1001", "session-1", "Why is refund ORD-10086 stuck?");
+
+        assertThat(result.reply().intent()).isEqualTo("REFUND_STATUS_EXPLANATION");
+        assertThat(result.reply().toolsCalled()).containsExactly("getRefundStatus");
+        assertThat(result.reply().response()).contains("Payment channel requires manual risk review.");
+        verify(tools).getRefundStatus("CUST-1001", "ORD-10086");
+        verify(memory).rememberOrder("CUST-1001", "session-1", "ORD-10086");
+    }
+
+    @Test
+    void returnsTheConstrainedExplanationWhenTheGeneratorProvidesOne() {
+        RefundStatusSnapshot refund = new RefundStatusSnapshot("RF-10001", "ORD-10086", RefundStatus.PENDING_MANUAL_REVIEW,
+                "PAYMENT_RISK_REVIEW", "Payment channel requires manual risk review.",
+                "WAIT_FOR_OPERATIONS_REVIEW", java.time.Instant.parse("2026-08-24T12:30:00Z"));
+        when(tools.getRefundStatus("CUST-1001", "ORD-10086")).thenReturn(refund);
+        when(refundExplanationGenerator.generate("Why is refund ORD-10086 stuck?", refund))
+                .thenReturn(Optional.of(new RefundStatusExplanation("The refund is waiting for a manual review.", List.of("F1", "F2"))));
+
+        AgentResult result = agent.respond("CUST-1001", "session-1", "Why is refund ORD-10086 stuck?");
+
+        assertThat(result.reply().response()).isEqualTo("The refund is waiting for a manual review.");
+        verify(audit).record(anyString(), anyString(), anyString(), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.eq("LLM_GROUNDED"));
+    }
+
+    @Test
+    void requiresAnOrderReferenceBeforeRefundStatusLookup() {
+        AgentResult result = agent.respond("CUST-1001", "session-1", "Why is my refund stuck?");
+
+        assertThat(result.reply().intent()).isEqualTo("REFUND_STATUS_EXPLANATION");
+        assertThat(result.reply().errorCode()).isEqualTo("REFUND_REFERENCE_REQUIRED");
+        assertThat(result.reply().toolsCalled()).isEmpty();
+    }
+
+    @Test
+    void deniesAnotherCustomersRefundBeforeCallingTheExplanationGenerator() {
+        when(tools.getRefundStatus("CUST-2002", "ORD-10086")).thenThrow(new OrderNotAvailableException());
+
+        AgentResult result = agent.respond("CUST-2002", "session-1", "Why is refund ORD-10086 stuck?");
+
+        assertThat(result.status().value()).isEqualTo(403);
+        assertThat(result.reply().errorCode()).isEqualTo("ORDER_NOT_AVAILABLE");
+        verify(refundExplanationGenerator, never()).generate(anyString(), any(RefundStatusSnapshot.class));
     }
 
     @Test

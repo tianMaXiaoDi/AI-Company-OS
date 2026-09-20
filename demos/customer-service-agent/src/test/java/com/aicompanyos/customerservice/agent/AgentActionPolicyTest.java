@@ -23,6 +23,12 @@ class AgentActionPolicyTest {
     }
 
     @Test
+    void permitsOnlyTheReadOnlyRefundStatusToolForDiagnosis() {
+        assertThat(policy.requiresHumanApproval(AgentIntent.REFUND_STATUS_EXPLANATION)).isFalse();
+        assertThat(policy.allowedTools(AgentIntent.REFUND_STATUS_EXPLANATION)).containsExactly("getRefundStatus");
+    }
+
+    @Test
     void decisionNormalizesOrderIdsAndDoesNotAcceptTools() {
         StructuredAgentDecision decision = new StructuredAgentDecision(
                 AgentIntent.SHIPPING_STATUS, "ord-10086", null);

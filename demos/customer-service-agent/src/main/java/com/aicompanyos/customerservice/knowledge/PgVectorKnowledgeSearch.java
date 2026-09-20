@@ -2,6 +2,7 @@ package com.aicompanyos.customerservice.knowledge;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,7 +54,8 @@ public class PgVectorKnowledgeSearch {
                             embedding = EXCLUDED.embedding,
                             embedded_at = EXCLUDED.embedded_at
                         """,
-                embedding.chunkId(), embedding.model(), embedding.vector().dimension(), embedding.vector().pgVectorLiteral(), Instant.now());
+                embedding.chunkId(), embedding.model(), embedding.vector().dimension(), embedding.vector().pgVectorLiteral(),
+                Timestamp.from(Instant.now()));
     }
 
     public record KnowledgeEmbedding(java.util.UUID chunkId, String model, EmbeddingVector vector) {

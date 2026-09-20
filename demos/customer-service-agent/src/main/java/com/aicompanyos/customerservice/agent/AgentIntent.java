@@ -9,6 +9,7 @@ import java.util.List;
 public enum AgentIntent {
     SHIPPING_STATUS(AgentActionClass.AUTHORIZED_READ, List.of("getShippingStatus")),
     KNOWLEDGE_ANSWER(AgentActionClass.AUTHORIZED_READ, List.of("searchKnowledge")),
+    REFUND_STATUS_EXPLANATION(AgentActionClass.AUTHORIZED_READ, List.of("getRefundStatus")),
     REFUND_REVIEW_REQUIRED(AgentActionClass.HUMAN_APPROVAL_REQUIRED, List.of("getOrder")),
     HUMAN_HANDOFF(AgentActionClass.LOW_RISK_WRITE, List.of("createTicket")),
     UNSUPPORTED(AgentActionClass.NO_ACTION, List.of());

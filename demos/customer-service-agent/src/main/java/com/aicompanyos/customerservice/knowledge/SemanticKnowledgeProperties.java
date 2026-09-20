@@ -12,12 +12,12 @@ public record SemanticKnowledgeProperties(
         boolean indexOnStartup) {
 
     public SemanticKnowledgeProperties {
-        baseUrl = baseUrl == null || baseUrl.isBlank() ? "http://localhost:8088" : baseUrl.strip();
-        model = model == null || model.isBlank() ? "BAAI/bge-m3" : model.strip();
+        baseUrl = baseUrl == null || baseUrl.isBlank() ? "http://localhost:11434" : baseUrl.strip();
+        model = model == null || model.isBlank() ? "bge-m3" : model.strip();
         dimension = dimension == 0 ? 1024 : dimension;
         maximumDistance = maximumDistance == 0 ? 0.45 : maximumDistance;
         if (dimension != 1024) {
-            throw new IllegalArgumentException("The current pgvector index is fixed to the BAAI/bge-m3 1024 dimensions.");
+            throw new IllegalArgumentException("The current pgvector index is fixed to the bge-m3 1024 dimensions.");
         }
         if (maximumDistance < 0 || maximumDistance > 2) {
             throw new IllegalArgumentException("maximumDistance must be between 0 and 2 for cosine distance.");

@@ -9,7 +9,7 @@ class DeterministicAgentDecisionEngineTest {
 
     @Test
     void producesAConstrainedShippingDecision() {
-        StructuredAgentDecision decision = engine.decide("我的订单 ORD-10086 到哪里了？");
+        StructuredAgentDecision decision = engine.decide("我的订单 ORD-10086 到哪里了？").decision();
 
         assertThat(decision.intent()).isEqualTo(AgentIntent.SHIPPING_STATUS);
         assertThat(decision.orderId()).isEqualTo("ORD-10086");
@@ -18,15 +18,23 @@ class DeterministicAgentDecisionEngineTest {
 
     @Test
     void refundAlwaysStaysInReviewIntent() {
-        StructuredAgentDecision decision = engine.decide("请直接给 ORD-10086 退款");
+        StructuredAgentDecision decision = engine.decide("请直接给 ORD-10086 退款").decision();
 
         assertThat(decision.intent()).isEqualTo(AgentIntent.REFUND_REVIEW_REQUIRED);
         assertThat(decision.orderId()).isEqualTo("ORD-10086");
     }
 
     @Test
+    void refundStatusQuestionUsesAReadOnlyIntent() {
+        StructuredAgentDecision decision = engine.decide("Why is refund ORD-10086 stuck?").decision();
+
+        assertThat(decision.intent()).isEqualTo(AgentIntent.REFUND_STATUS_EXPLANATION);
+        assertThat(decision.orderId()).isEqualTo("ORD-10086");
+    }
+
+    @Test
     void policyQuestionUsesTheConstrainedKnowledgeIntent() {
-        StructuredAgentDecision decision = engine.decide("订单取消政策是什么？");
+        StructuredAgentDecision decision = engine.decide("订单取消政策是什么？").decision();
 
         assertThat(decision.intent()).isEqualTo(AgentIntent.KNOWLEDGE_ANSWER);
         assertThat(decision.orderId()).isNull();
