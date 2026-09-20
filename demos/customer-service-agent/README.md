@@ -55,7 +55,7 @@ $env:CUSTOMER_SERVICE_KNOWLEDGE_SEMANTIC_INDEX_ON_STARTUP = 'true'
 mvn spring-boot:run
 ```
 
-The local LLM has two isolated, non-executable roles. First it may classify a question into the existing structured intent contract; it cannot name a tool or access any customer data. The server validates the JSON shape, intent, and order ID against the original message, records the decision source, and falls back to deterministic routing when invalid or unavailable. Then, only after server-side retrieval or an authorized read tool has completed, it may draft a cited knowledge answer or a refund-status explanation from the minimized server facts. Business tools, customer identity, authorization, database access, and refund execution remain outside the LLM boundary.
+The `llm` profile uses Spring AI's `ChatClient` and Ollama tool-calling support for the refund-status workflow. The model receives only the `getRefundStatus(orderId)` schema. Spring AI executes the requested Java tool, appends its result to the conversation, and asks the model for the final response. The model never receives customer identity, repository access, or a free choice of order ID: the Java adapter binds every tool call to the authenticated customer and the order ID already present in the original message. The returned JSON answer must cite server facts; otherwise the service falls back to the deterministic reply. The former hand-written Ollama adapters remain available only under the explicit `legacy-llm` profile.
 
 ### Refund Status Tool Calling
 

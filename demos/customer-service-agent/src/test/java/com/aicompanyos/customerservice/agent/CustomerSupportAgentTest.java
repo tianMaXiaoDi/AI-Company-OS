@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,13 +40,14 @@ class CustomerSupportAgentTest {
     @Mock private KnowledgeRetriever knowledge;
     @Mock private GroundedKnowledgeAnswerGenerator answerGenerator;
     @Mock private RefundStatusExplanationGenerator refundExplanationGenerator;
+    @Mock private RefundStatusToolCalling refundStatusToolCalling;
 
     private CustomerSupportAgent agent;
 
     @BeforeEach
     void setUp() {
         agent = new CustomerSupportAgent(tools, memory, audit, new AgentActionPolicy(), new DeterministicAgentDecisionEngine(), knowledge,
-                answerGenerator, refundExplanationGenerator);
+                answerGenerator, refundExplanationGenerator, refundStatusToolCalling);
     }
 
     @Test
@@ -115,6 +117,20 @@ class CustomerSupportAgentTest {
         assertThat(result.reply().response()).contains("Payment channel requires manual risk review.");
         verify(tools).getRefundStatus("CUST-1001", "ORD-10086");
         verify(memory).rememberOrder("CUST-1001", "session-1", "ORD-10086");
+    }
+
+    @Test
+    void usesTheSpringAiToolCallingReplyOnlyAfterTheAuthorizedToolAdapterCompletes() {
+        when(refundStatusToolCalling.reply("CUST-1001", "ORD-10086", "Why is refund ORD-10086 stuck?"))
+                .thenReturn(Optional.of("The refund is processing."));
+
+        AgentResult result = agent.respond("CUST-1001", "session-1", "Why is refund ORD-10086 stuck?");
+
+        assertThat(result.reply().toolsCalled()).containsExactly("getRefundStatus");
+        assertThat(result.reply().response()).isEqualTo("The refund is processing.");
+        verifyNoInteractions(tools);
+        verify(audit).record(anyString(), eq("session-1"), eq("CUST-1001"), eq("refund.status.explanation"),
+                eq("getRefundStatus"), eq("SPRING_AI_TOOL_CALLING"));
     }
 
     @Test

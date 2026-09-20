@@ -21,7 +21,7 @@ import org.springframework.web.client.RestClientException;
  * knowledge text to a loopback Ollama endpoint, then validates every returned citation.
  */
 @Service
-@Profile("llm")
+@Profile("legacy-llm")
 public class LocalOllamaGroundedKnowledgeAnswerGenerator implements GroundedKnowledgeAnswerGenerator {
     private static final Logger log = LoggerFactory.getLogger(LocalOllamaGroundedKnowledgeAnswerGenerator.class);
     private static final Map<String, Object> RESPONSE_SCHEMA = Map.of(

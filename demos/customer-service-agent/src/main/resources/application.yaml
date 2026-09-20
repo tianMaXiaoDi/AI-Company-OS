@@ -23,6 +23,13 @@ spring:
     keep-alive: true
   lifecycle:
     timeout-per-shutdown-phase: 20s
+  ai:
+    ollama:
+      base-url: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_MODEL:qwen3:4b}
+          temperature: ${CUSTOMER_SERVICE_KNOWLEDGE_LLM_TEMPERATURE:0}
 
 server:
   shutdown: graceful

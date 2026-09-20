@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 /** Keeps the deterministic explanation path when the opt-in LLM profile is not active. */
 @Service
-@Profile("!llm")
+@Profile("!legacy-llm")
 public class NoOpRefundStatusExplanationGenerator implements RefundStatusExplanationGenerator {
     @Override
     public Optional<RefundStatusExplanation> generate(String question, RefundStatusSnapshot refund) {

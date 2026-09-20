@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 /** Keeps the citation-first response unchanged unless the opt-in LLM profile is active. */
 @Service
-@Profile("!llm")
+@Profile("!legacy-llm")
 public class PassThroughGroundedKnowledgeAnswerGenerator implements GroundedKnowledgeAnswerGenerator {
     @Override
     public Optional<KnowledgeAnswer> generate(String question, KnowledgeAnswer retrieved) {

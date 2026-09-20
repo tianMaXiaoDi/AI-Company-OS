@@ -34,11 +34,13 @@ public class CustomerSupportAgent {
     private final KnowledgeRetriever knowledgeRetriever;
     private final GroundedKnowledgeAnswerGenerator answerGenerator;
     private final RefundStatusExplanationGenerator refundExplanationGenerator;
+    private final RefundStatusToolCalling refundStatusToolCalling;
 
     public CustomerSupportAgent(CustomerSupportTools tools, RedisConversationMemory memory, AuditService audit,
                                 AgentActionPolicy actionPolicy, AgentDecisionEngine decisionEngine,
                                 KnowledgeRetriever knowledgeRetriever, GroundedKnowledgeAnswerGenerator answerGenerator,
-                                RefundStatusExplanationGenerator refundExplanationGenerator) {
+                                RefundStatusExplanationGenerator refundExplanationGenerator,
+                                RefundStatusToolCalling refundStatusToolCalling) {
         this.tools = tools;
         this.memory = memory;
         this.audit = audit;
@@ -47,6 +49,7 @@ public class CustomerSupportAgent {
         this.knowledgeRetriever = knowledgeRetriever;
         this.answerGenerator = answerGenerator;
         this.refundExplanationGenerator = refundExplanationGenerator;
+        this.refundStatusToolCalling = refundStatusToolCalling;
     }
 
     public AgentResult respond(String customerId, String sessionId, String message) {
@@ -63,6 +66,13 @@ public class CustomerSupportAgent {
                         "请提供订单号，或先查询对应订单后再询问退款状态。", null, "REFUND_REFERENCE_REQUIRED"));
             }
             try {
+                Optional<String> springAiReply = refundStatusToolCalling.reply(customerId, orderId.get(), message);
+                if (springAiReply.isPresent()) {
+                    memory.rememberOrder(customerId, sessionId, orderId.get());
+                    audit.record(traceId, sessionId, customerId, "refund.status.explanation", "getRefundStatus", "SPRING_AI_TOOL_CALLING");
+                    return AgentResult.ok(reply(traceId, AgentIntent.REFUND_STATUS_EXPLANATION, List.of("getRefundStatus"),
+                            springAiReply.get(), null, null));
+                }
                 RefundStatusSnapshot refund = tools.getRefundStatus(customerId, orderId.get());
                 memory.rememberOrder(customerId, sessionId, orderId.get());
                 Optional<RefundStatusExplanation> explanation = refundExplanationGenerator.generate(message, refund);

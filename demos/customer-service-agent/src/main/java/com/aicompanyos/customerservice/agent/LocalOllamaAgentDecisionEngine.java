@@ -24,7 +24,7 @@ import org.springframework.web.client.RestClientException;
  */
 @Service
 @Primary
-@Profile("llm")
+@Profile("legacy-llm")
 public class LocalOllamaAgentDecisionEngine implements AgentDecisionEngine {
     private static final Logger log = LoggerFactory.getLogger(LocalOllamaAgentDecisionEngine.class);
     private static final MediaType JSON_UTF8 = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8);
